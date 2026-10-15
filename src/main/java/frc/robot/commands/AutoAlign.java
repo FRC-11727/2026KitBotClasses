@@ -8,26 +8,21 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.CANDriveSubsystem;
 import frc.robot.LimelightHelpers;
+import static frc.robot.Constants.AutoAlignConstants.*;
 
 public class AutoAlign extends Command {
   private final CANDriveSubsystem drive;
   private final PIDController turnPID;
 
-  // Proportional, Integral, and Derivative gains
-  // Tune these values based on your physical robot's weight and wheel traction
-  private static final double kP = 0.05;
-  private static final double kI = 0.0;
-  private static final double kD = 0.0;
-
   public AutoAlign(CANDriveSubsystem driveSystem) {
     this.drive = driveSystem;
 
     // Initialize PID controller aiming for a 0 degree offset (perfectly centered)
-    this.turnPID = new PIDController(kP, kI, kD);
+    this.turnPID = new PIDController(KPAA, KIAA, KDAA);
     this.turnPID.setSetpoint(0.0);
 
     // Set a tolerance so the command knows when it is "close enough" (e.g., within 1.5 degrees)
-    this.turnPID.setTolerance(1.5);
+    this.turnPID.setTolerance(ALIGNMENT_TOLERANCE);
 
     // Require the drive subsystem so no other drive commands run at the same time
     addRequirements(drive);

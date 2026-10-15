@@ -58,4 +58,15 @@ public final class Constants {
     public static final double DRIVE_SCALING = .7;
     public static final double ROTATION_SCALING = .8;
   }
+
+  public static final class AutoAlignConstants {
+    // Constants for autonomous alignment
+    public static final double ALIGNMENT_TOLERANCE = 1.5; // degrees
+    public static final double ALIGNMENT_SPEED = 0.5; // percentage of max speed
+    // Proportional, Integral, and Derivative gains
+    // Tune these values based on your physical robot's weight and wheel traction
+    public static final double KPAA = 0.05; // Change
+    public static final double KIAA = 0.0; // Change
+    public static final double KDAA = 0.0; // Change
+  }
 }
