@@ -16,6 +16,7 @@ import frc.robot.commands.Intake;
 import frc.robot.commands.LaunchSequence;
 import frc.robot.subsystems.CANDriveSubsystem;
 import frc.robot.subsystems.CANFuelSubsystem;
+import frc.robot.commands.AutoAlign;
 
 /**
  * This class is where the bulk of the robot should be declared. Since
@@ -73,7 +74,8 @@ public class RobotContainer {
     // While the A button is held on the operator controller, eject fuel back out
     // the intake
     operatorController.a().whileTrue(new Eject(fuelSubsystem));
-
+    // While the right bumper on the driver controller is held, align the robot
+    driverController.rightBumper().whileTrue(new AutoAlign(driveSubsystem));
     // Set the default command for the drive subsystem to the command provided by
     // factory with the values provided by the joystick axes on the driver
     // controller. The Y axis of the controller is inverted so that pushing the
