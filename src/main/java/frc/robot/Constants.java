@@ -155,6 +155,30 @@ public final class Constants {
     // help avoid turning too fast and beign difficult to control
     public static final double DRIVE_SCALING = .7;
     public static final double ROTATION_SCALING = .8;
+
+    /**
+     * Sticks never rest at exactly zero; they drift a few percent off-center. Any input
+     * smaller than this is treated as zero so the robot doesn't creep on its own. If your
+     * robot creeps, raise this; if small careful movements do nothing, lower it.
+     */
+    public static final double DEADBAND = 0.10;
+
+    /**
+     * Limits how fast the FORWARD command may change, in "full sticks per second".
+     * 3.0 means the drive can go from 0% to 100% in 1/3 of a second. This stops the robot
+     * from tipping or burning rubber when the driver slams the stick, while turning is left
+     * unfiltered so steering still feels instant.
+     */
+    public static final double FORWARD_SLEW_RATE = 3.0;
+
+    /** Everything is multiplied by this while the slow-mode button is held. */
+    public static final double SLOW_MODE_MULTIPLIER = 0.5;
+
+    //Normal speed multiplier for teleop drive command is 70% of  full speed.
+    public static final double NORMAL_SPEED_MULTIPLIER = 0.7;
+
+    // Shaping the input curve makes the robot easier to control at low speeds. The higher the exponent, the more sensitive the stick is at low speeds. 1.0 = linear, 2.0 = quadratic, 3.0 = cubic.
+    public static final double INPUT_EXPONENT = 3.0;
   }
 
   public static final class AutoAlignConstants {
