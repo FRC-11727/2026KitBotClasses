@@ -1,129 +1,117 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot;
 
-import edu.wpi.first.hal.HAL;
-import edu.wpi.first.hal.FRCNetComm.tResourceType;
-import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import org.littletonrobotics.junction.LoggedRobot;
+import org.littletonrobotics.junction.Logger;
+import org.littletonrobotics.junction.networktables.NT4Publisher;
+import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 
 /**
- * The VM is configured to automatically run this class, and to call the
- * functions corresponding to
- * each mode, as described in the TimedRobot documentation. If you change the
- * name of this class or
- * the package after creating this project, you must also update the
- * build.gradle file in the
- * project.
+ * The robot's heartbeat. WPILib calls the methods below at the right moments: when the
+ * robot boots, when a match phase starts, and every 20ms in between. Notice there's almost
+ * no robot-specific code here: WHAT the robot is lives in RobotContainer; this file only
+ * decides WHEN things run. You will rarely need to edit it.
+ *
+ * <p>We extend {@code LoggedRobot} (AdvantageKit's version of the standard TimedRobot) and
+ * start the logger before anything else, so every value recorded with {@code
+ * Logger.recordOutput(...)} or {@code @AutoLogOutput} is (1) published live to the dashboard
+ * and (2) saved to a .wpilog file you can replay in AdvantageScope after a match. See
+ * docs/05-logging-and-dashboards.md for the tour.
  */
-public class Robot extends TimedRobot {
-  private Command m_autonomousCommand;
+public class Robot extends LoggedRobot {
 
-  private RobotContainer m_robotContainer;
+  private Command autonomousCommand;
+  private final RobotContainer robotContainer;
 
-  /**
-   * This function is run when the robot is first started up and should be used
-   * for any
-   * initialization code.
-   */
-  @Override
-  public void robotInit() {
-    // Instantiate our RobotContainer. This will perform all our button bindings,
-    // and put our
-    // autonomous chooser on the dashboard.
-    m_robotContainer = new RobotContainer();
+  /** Runs once when the robot code boots. */
+  public Robot() {
+    // --- Log metadata: stamp every log file with exactly which code produced it ------------
+    // BuildConstants is GENERATED at compile time by the gversion plugin (see build.gradle).
+    // If your editor underlines it in red on a fresh clone, run a build once (WPILib icon ->
+    // "Build Robot Code") and it will appear.
+    Logger.recordMetadata("ProjectName", BuildConstants.MAVEN_NAME);
+    Logger.recordMetadata("BuildDate", BuildConstants.BUILD_DATE);
+    Logger.recordMetadata("GitSHA", BuildConstants.GIT_SHA);
+    Logger.recordMetadata("GitBranch", BuildConstants.GIT_BRANCH);
+    // A switch (not a ternary) because DIRTY is a compile-time constant: the compiler would
+    // flag a ternary on it as dead code.
+    switch (BuildConstants.DIRTY) {
+      case 0 -> Logger.recordMetadata("GitDirty", "All changes committed");
+      case 1 -> Logger.recordMetadata("GitDirty", "Uncommitted changes");
+      default -> Logger.recordMetadata("GitDirty", "Unknown");
+    }
 
-    // Used to track usage of Kitbot code, please do not remove.
-    HAL.report(tResourceType.kResourceType_Framework, 10);
+    // --- Where should the log data go? ------------------------------------------------------
+    if (isReal()) {
+      // On the real robot: write a .wpilog file AND stream live to the dashboard.
+      // WPILOGWriter with no arguments saves to a USB stick plugged into the roboRIO
+      // (strongly recommended; bring one to competitions), falling back to the roboRIO's
+      // internal storage if none is present.
+      Logger.addDataReceiver(new WPILOGWriter());
+      Logger.addDataReceiver(new NT4Publisher());
+    } else {
+      // In simulation: stream live (open AdvantageScope and connect to the simulator) and
+      // also save a log file into the project's logs/ folder (gitignored).
+      Logger.addDataReceiver(new WPILOGWriter("logs"));
+      Logger.addDataReceiver(new NT4Publisher());
+    }
+
+    // NOTE for later: full AdvantageKit setups add a third mode here, REPLAY, which
+    // re-runs a log file through the code deterministically. It requires structuring
+    // subsystems with "IO layers", which is deliberately NOT done in this skeleton to keep
+    // it approachable. When you're curious, see docs/08-next-steps.md.
+
+    // Start logging. Everything before this line configures; nothing logs until it runs.
+    Logger.start();
+
+    // Build the actual robot (subsystems, buttons, autos).
+    robotContainer = new RobotContainer();
   }
 
-  /**
-   * This function is called every 20 ms, no matter the mode. Use this for items
-   * like diagnostics
-   * that you want ran during disabled, autonomous, teleoperated and test.
-   *
-   * <p>
-   * This runs after the mode specific periodic functions, but before LiveWindow
-   * and
-   * SmartDashboard integrated updating.
-   */
+  /** Runs every 20ms, in EVERY mode. */
   @Override
   public void robotPeriodic() {
-    // Runs the Scheduler. This is responsible for polling buttons, adding
-    // newly-scheduled
-    // commands, running already-scheduled commands, removing finished or
-    // interrupted commands,
-    // and running subsystem periodic() methods. This must be called from the
-    // robot's periodic
-    // block in order for anything in the Command-based framework to work.
+    // This single line is the engine of the whole command-based framework: it reads the
+    // buttons, schedules and cancels commands, runs active commands, and calls every
+    // subsystem's periodic(). Without it, no commands run and the robot does nothing.
     CommandScheduler.getInstance().run();
   }
 
-  /** This function is called once each time the robot enters Disabled mode. */
+  /** Runs once each time the robot becomes disabled (including after a match phase). */
   @Override
-  public void disabledInit() {
-  }
+  public void disabledInit() {}
 
-  @Override
-  public void disabledPeriodic() {
-  }
-
-  /**
-   * This autonomous runs the autonomous command selected by your
-   * {@link RobotContainer} class.
-   */
+  /** Runs once when autonomous starts. */
   @Override
   public void autonomousInit() {
-    m_autonomousCommand = m_robotContainer.getAutonomousCommand();
-
-    // schedule the autonomous command (example)
-    if (m_autonomousCommand != null) {
-     CommandScheduler.getInstance().schedule(m_autonomousCommand);
+    // Ask the container which routine the drive team picked on the dashboard, and run it.
+    autonomousCommand = robotContainer.getAutonomousCommand();
+    if (autonomousCommand != null) {
+      // Record which routine actually ran, which settles any post-match "wrong auto" debate.
+      Logger.recordOutput("Robot/SelectedAuto", autonomousCommand.getName());
+      // Commands are handed to the scheduler to run (calling schedule() directly on the
+      // command is the pre-2026 style and is deprecated).
+      CommandScheduler.getInstance().schedule(autonomousCommand);
     }
   }
 
-  /** This function is called periodically during autonomous. */
-  @Override
-  public void autonomousPeriodic() {
-  }
-
+  /** Runs once when teleop starts (after auto in a real match). */
   @Override
   public void teleopInit() {
-    // This makes sure that the autonomous stops running when
-    // teleop starts running. If you want the autonomous to
-    // continue until interrupted by another command, remove
-    // this line or comment it out.
-    if (m_autonomousCommand != null) {
-      m_autonomousCommand.cancel();
+    // Stop the auto routine when the driver takes over. Without this, an auto that hadn't
+    // finished would keep fighting the driver for the drivetrain.
+    if (autonomousCommand != null) {
+      autonomousCommand.cancel();
+      autonomousCommand = null;
     }
+    // Nothing to start here: TeleopDriveCommand is the drivetrain's DEFAULT command, so the
+    // scheduler starts it automatically the moment nothing else claims the drivetrain.
   }
 
-  /** This function is called periodically during operator control. */
-  @Override
-  public void teleopPeriodic() {
-  }
-
+  /** Runs once when test mode starts (rarely used; fine to ignore for now). */
   @Override
   public void testInit() {
-    // Cancels all running commands at the start of test mode.
     CommandScheduler.getInstance().cancelAll();
-  }
-
-  /** This function is called periodically during test mode. */
-  @Override
-  public void testPeriodic() {
-  }
-
-  /** This function is called once when the robot is first started up. */
-  @Override
-  public void simulationInit() {
-  }
-
-  /** This function is called periodically whilst in simulation. */
-  @Override
-  public void simulationPeriodic() {
   }
 }
