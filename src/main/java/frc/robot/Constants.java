@@ -4,6 +4,10 @@
 
 package frc.robot;
 
+import edu.wpi.first.math.util.Units;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+
 /**
  * The Constants class provides a convenient place for teams to hold robot-wide
  * numerical or boolean constants. This class should not be used for any other
@@ -16,15 +20,109 @@ package frc.robot;
  */
 public final class Constants {
   public static final class DriveConstants {
-    // Motor controller IDs for drivetrain motors
-    public static final int LEFT_LEADER_ID = 1; //Change 
-    public static final int LEFT_FOLLOWER_ID = 2; // Change
-    public static final int RIGHT_LEADER_ID = 3; // Change
-    public static final int RIGHT_FOLLOWER_ID = 4; // Change
+    
+    // ------------------------------------------------------------------------------------
+    // CAN IDs
+    //
+    // Every device on the CAN bus (motor controllers, the Pigeon gyro, the power hub) needs
+    // a unique ID number. You assign SPARK MAX IDs with the REV Hardware Client and the
+    // Pigeon's ID with Phoenix Tuner X (see docs/01-software-setup.md).
+    //
+    // These MUST match what you configured on the real hardware, or the robot will not move
+    // (and you'll see "CAN timeout" style errors in the Driver Station).
+    //
+    // Our convention (feel free to keep it as your team grows):
+    //   1         = Power Distribution Hub (REV default)
+    //   11-19     = drivetrain
+    //   20-29     = sensors (gyro, etc.)
+    //   30+       = future mechanisms (arm, intake, shooter, ...)
+    // ------------------------------------------------------------------------------------
+    public static final int LEFT_LEADER_CAN_ID = 11; //change
+    public static final int LEFT_FOLLOWER_CAN_ID = 12; //change
+    public static final int RIGHT_LEADER_CAN_ID = 13; //change
+    public static final int RIGHT_FOLLOWER_CAN_ID = 14; //change
+    public static final int PIGEON_CAN_ID = 20; //change
 
-    // Current limit for drivetrain motors. 60A is a reasonable maximum to reduce
-    // likelihood of tripping breakers or damaging CIM motors
-    public static final int DRIVE_MOTOR_CURRENT_LIMIT = 60;
+    // ------------------------------------------------------------------------------------
+    // Which side is "backwards"?
+    //
+    // The two sides of a tank drivetrain physically face opposite directions, so one side
+    // must be electrically inverted or the robot spins in circles when you push "forward".
+    // With the motors mounted like the KitBot's, inverting the RIGHT side makes positive =
+    // forward on both sides. If your robot drives backwards when you command forward, flip
+    // BOTH of these; if it spins in place, flip ONE of them.
+    // ------------------------------------------------------------------------------------
+    public static final boolean LEFT_INVERTED = false;
+    public static final boolean RIGHT_INVERTED = true;
+
+    // ------------------------------------------------------------------------------------
+    // Physical dimensions - used to convert "motor rotations" into real-world meters, which
+    // is what makes odometry (tracking where the robot is on the field) possible.
+    // ------------------------------------------------------------------------------------
+
+    /**
+     * How many times the MOTOR spins for ONE rotation of the WHEEL. Read this off your
+     * gearbox: the AM14U (KitBot) Toughbox Mini is 10.71:1 by default (8.45:1 is the common
+     * "fast" option). Getting this wrong makes every distance the robot reports wrong by the
+     * same factor.
+     */
+    public static final double GEAR_RATIO = 10.71; //change
+
+    /** KitBot wheels are 6 inches. Measure yours, since worn wheels are slightly smaller. */
+    public static final double WHEEL_DIAMETER_METERS = Units.inchesToMeters(6.0); //change
+
+    /**
+     * Distance between the CENTERS of the left and right wheels ("track width"). Used by the
+     * simulator and, later, by trajectory following. Measure with a tape measure; close is
+     * fine to start.
+     */
+    public static final double TRACK_WIDTH_METERS = Units.inchesToMeters(22.0); //change
+
+    // ------------------------------------------------------------------------------------
+    // Encoder conversion factors.
+    //
+    // The NEO's built-in encoder natively reports MOTOR rotations and RPM. We tell the
+    // SPARK MAX to multiply by these factors so that everywhere else in the code:
+    //   position is in METERS and velocity is in METERS PER SECOND (of the wheel/robot).
+    //
+    //   meters per motor rotation = (wheel circumference) / (gear ratio)
+    //   m/s per motor RPM         = that, divided by 60 (seconds per minute)
+    // ------------------------------------------------------------------------------------
+    public static final double POSITION_CONVERSION_FACTOR =
+        (Math.PI * WHEEL_DIAMETER_METERS) / GEAR_RATIO; // motor rotations -> meters
+    public static final double VELOCITY_CONVERSION_FACTOR =
+        POSITION_CONVERSION_FACTOR / 60.0; // motor RPM -> meters per second
+
+    // ------------------------------------------------------------------------------------
+    // Electrical limits - these protect your robot. Don't remove them.
+    // ------------------------------------------------------------------------------------
+
+    /**
+     * Max current (amps) each motor may draw. 50A is a safe, competitive value for a NEO on
+     * a 40A-breaker drivetrain (brief spikes above the breaker rating are fine). Lowering
+     * this reduces brownouts (robot momentarily losing power) and wheel slip; raising it
+     * gives more pushing power but risks tripping breakers and browning out.
+     */
+    public static final int CURRENT_LIMIT_AMPS = 50;
+
+    /**
+     * The SPARK MAX scales its output as if the battery always sat at this voltage, so the
+     * robot drives the same on a fresh battery (12.8V) as on a tired one (11.5V).
+     */
+    public static final double NOMINAL_VOLTAGE = 12.0;
+
+    // ------------------------------------------------------------------------------------
+    // Simulation-only physical properties (rough numbers are fine; they just make the
+    // simulated robot accelerate realistically). No effect on the real robot.
+    // ------------------------------------------------------------------------------------
+
+    /** Full robot weight including battery and bumpers. ~125 lb is a typical KitBot. */
+    public static final double ROBOT_MASS_KG = 55.0; //change
+
+    /** Moment of inertia - how hard the robot is to SPIN. 7.5 is a reasonable default. */
+    public static final double ROBOT_MOI_KG_M2 = 7.5; //change
+
+    public static final Pose2d START_POSE = new Pose2d(2.0, 2.0, Rotation2d.kZero);
   }
 
   public static final class FuelConstants {
@@ -57,5 +155,40 @@ public final class Constants {
     // help avoid turning too fast and beign difficult to control
     public static final double DRIVE_SCALING = .7;
     public static final double ROTATION_SCALING = .8;
+
+    /**
+     * Sticks never rest at exactly zero; they drift a few percent off-center. Any input
+     * smaller than this is treated as zero so the robot doesn't creep on its own. If your
+     * robot creeps, raise this; if small careful movements do nothing, lower it.
+     */
+    public static final double DEADBAND = 0.10;
+
+    /**
+     * Limits how fast the FORWARD command may change, in "full sticks per second".
+     * 3.0 means the drive can go from 0% to 100% in 1/3 of a second. This stops the robot
+     * from tipping or burning rubber when the driver slams the stick, while turning is left
+     * unfiltered so steering still feels instant.
+     */
+    public static final double FORWARD_SLEW_RATE = 3.0;
+
+    /** Everything is multiplied by this while the slow-mode button is held. */
+    public static final double SLOW_MODE_MULTIPLIER = 0.5;
+
+    //Normal speed multiplier for teleop drive command is 70% of  full speed.
+    public static final double NORMAL_SPEED_MULTIPLIER = 0.7;
+
+    // Shaping the input curve makes the robot easier to control at low speeds. The higher the exponent, the more sensitive the stick is at low speeds. 1.0 = linear, 2.0 = quadratic, 3.0 = cubic.
+    public static final double INPUT_EXPONENT = 3.0;
+  }
+
+  public static final class AutoAlignConstants {
+    // Constants for autonomous alignment
+    public static final double ALIGNMENT_TOLERANCE = 1.5; // degrees
+    public static final double ALIGNMENT_SPEED = 0.5; // percentage of max speed
+    // Proportional, Integral, and Derivative gains
+    // Tune these values based on your physical robot's weight and wheel traction
+    public static final double KPAA = 0.05; // Change
+    public static final double KIAA = 0.0; // Change
+    public static final double KDAA = 0.0; // Change
   }
 }

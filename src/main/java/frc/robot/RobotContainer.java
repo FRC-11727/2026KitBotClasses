@@ -16,6 +16,8 @@ import frc.robot.commands.Intake;
 import frc.robot.commands.LaunchSequence;
 import frc.robot.subsystems.CANDriveSubsystem;
 import frc.robot.subsystems.CANFuelSubsystem;
+import frc.robot.commands.AutoAlign;
+import frc.robot.commands.TeleopDriveCommand;
 
 /**
  * This class is where the bulk of the robot should be declared. Since
@@ -28,7 +30,6 @@ public class RobotContainer {
   // The robot's subsystems
   private final CANDriveSubsystem driveSubsystem = new CANDriveSubsystem();
   private final CANFuelSubsystem fuelSubsystem = new CANFuelSubsystem();
-
   // The driver's controller
   private final CommandXboxController driverController = new CommandXboxController(
       DRIVER_CONTROLLER_PORT);
@@ -45,11 +46,32 @@ public class RobotContainer {
    */
   public RobotContainer() {
     configureBindings();
+    configureDefaultCommands();
 
     // Set the options to show up in the Dashboard for selecting auto modes. If you
     // add additional auto modes you can add additional lines here with
     // autoChooser.addOption
     autoChooser.setDefaultOption("Autonomous", new ExampleAuto(driveSubsystem, fuelSubsystem));
+  }
+
+  /** A DEFAULT command runs automatically whenever nothing else is using that subsystem. */
+  private void configureDefaultCommands() {
+    // Teleop arcade drive, always on unless an auto (or the turn demo) borrows the
+    // drivetrain. The lambdas are read live every 20ms:
+    //  - Left stick Y  = forward/back. Pushing a stick FORWARD reads NEGATIVE (a USB HID
+    //    convention as old as flight sims), so we negate it. If your robot drives backwards,
+    //    do NOT remove this minus sign; flip the motor inversions in Constants instead.
+    //  - Right stick X = turning. WPILib treats counter-clockwise as positive, but drivers
+    //    expect "push right = turn right (clockwise)", so this is negated too.
+    //  - Right bumper  = slow mode while held.
+    //  - Left bumper   = turbo mode while held.
+    driveSubsystem.setDefaultCommand(
+        new TeleopDriveCommand(
+            driveSubsystem,
+            () -> -driverController.getLeftY(),
+            () -> -driverController.getRightX(),
+            driverController.rightBumper(),
+            driverController.leftBumper()));
   }
 
   /**
@@ -73,7 +95,8 @@ public class RobotContainer {
     // While the A button is held on the operator controller, eject fuel back out
     // the intake
     operatorController.a().whileTrue(new Eject(fuelSubsystem));
-
+    // While the right bumper on the driver controller is held, align the robot
+    driverController.rightTrigger().whileTrue(new AutoAlign(driveSubsystem));
     // Set the default command for the drive subsystem to the command provided by
     // factory with the values provided by the joystick axes on the driver
     // controller. The Y axis of the controller is inverted so that pushing the
