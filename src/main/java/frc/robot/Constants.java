@@ -37,11 +37,11 @@ public final class Constants {
     //   20-29     = sensors (gyro, etc.)
     //   30+       = future mechanisms (arm, intake, shooter, ...)
     // ------------------------------------------------------------------------------------
-    public static final int LEFT_LEADER_CAN_ID = 11; //change
-    public static final int LEFT_FOLLOWER_CAN_ID = 12; //change
-    public static final int RIGHT_LEADER_CAN_ID = 13; //change
-    public static final int RIGHT_FOLLOWER_CAN_ID = 14; //change
-    public static final int PIGEON_CAN_ID = 20; //change
+    public static final int LEFT_LEADER_CAN_ID = 11;
+    public static final int LEFT_FOLLOWER_CAN_ID = 12; 
+    public static final int RIGHT_LEADER_CAN_ID = 13; 
+    public static final int RIGHT_FOLLOWER_CAN_ID = 14;
+    //public static final int PIGEON_CAN_ID = 20; //We don't have it
 
     // ------------------------------------------------------------------------------------
     // Which side is "backwards"?
@@ -127,8 +127,8 @@ public final class Constants {
 
   public static final class FuelConstants {
     // Motor controller IDs for Fuel Mechanism motors
-    public static final int FEEDER_MOTOR_ID = 6; // Change
-    public static final int INTAKE_LAUNCHER_MOTOR_ID = 5; // Change
+    public static final int FEEDER_MOTOR_ID = 31;
+    public static final int INTAKE_LAUNCHER_MOTOR_ID = 32;
 
     // Current limit and nominal voltage for fuel mechanism motors.
     public static final int FEEDER_MOTOR_CURRENT_LIMIT = 60;

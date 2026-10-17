@@ -2,10 +2,10 @@ package frc.robot.subsystems;
 
 import static frc.robot.Constants.DriveConstants.*;
 
-import com.ctre.phoenix6.BaseStatusSignal;
-import com.ctre.phoenix6.StatusSignal;
-import com.ctre.phoenix6.hardware.Pigeon2;
-import com.ctre.phoenix6.sim.Pigeon2SimState;
+//import com.ctre.phoenix6.BaseStatusSignal;
+//import com.ctre.phoenix6.StatusSignal;
+//import com.ctre.phoenix6.hardware.Pigeon2;
+//import com.ctre.phoenix6.sim.Pigeon2SimState;
 import com.revrobotics.PersistMode;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.ResetMode;
@@ -86,13 +86,13 @@ public class CANDriveSubsystem extends SubsystemBase {
 
   // The gyro. Knowing the robot's heading is what makes odometry accurate (encoders alone
   // can't tell the difference between driving straight and arcing).
-  private final Pigeon2 pigeon = new Pigeon2(PIGEON_CAN_ID);
+  //private final Pigeon2 pigeon = new Pigeon2(PIGEON_CAN_ID); // No have
 
   // Phoenix 6 devices hand you cached "status signals" instead of live values. We grab the
   // two we care about once, then refresh them at the top of every periodic(). That's the
   // pattern CTRE recommends, and it guarantees the rest of the loop sees current data.
-  private final StatusSignal<Angle> yawSignal = pigeon.getYaw();
-  private final StatusSignal<AngularVelocity> yawRateSignal = pigeon.getAngularVelocityZWorld();
+  //private final StatusSignal<Angle> yawSignal = pigeon.getYaw(); // No have
+  //private final StatusSignal<AngularVelocity> yawRateSignal = pigeon.getAngularVelocityZWorld(); // No have
 
   // WPILib helper that turns (forward, rotation) or (left, right) requests into correctly
   // scaled outputs for the two sides. It also includes a motor-safety watchdog: if no drive
@@ -131,7 +131,7 @@ public class CANDriveSubsystem extends SubsystemBase {
 
   private final SparkMaxSim leftLeaderSim = new SparkMaxSim(leftLeader, DCMotor.getNEO(2));
   private final SparkMaxSim rightLeaderSim = new SparkMaxSim(rightLeader, DCMotor.getNEO(2));
-  private final Pigeon2SimState pigeonSim = pigeon.getSimState();
+  //private final Pigeon2SimState pigeonSim = pigeon.getSimState(); // No have
 
   /** Configures all the hardware. Runs once when the robot code starts. */
   public CANDriveSubsystem() {
@@ -161,7 +161,7 @@ public class CANDriveSubsystem extends SubsystemBase {
         rightFollowerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
     // --- Gyro ------------------------------------------------------------------------------
-    pigeon.setYaw(0.0); // define "the way the robot is facing at power-on" as 0 degrees
+    //pigeon.setYaw(0.0); // define "the way the robot is facing at power-on" as 0 degrees    No have
 
     // DifferentialDrive applies its own tiny safety deadband; our real deadband is applied
     // to the joystick in TeleopDriveCommand, so this one can stay at its default.
@@ -264,12 +264,12 @@ public class CANDriveSubsystem extends SubsystemBase {
 
   /** Turn rate in degrees per second (used by TurnToAngleCommand's tolerance check). */
   public double getTurnRateDegreesPerSec() {
-    return yawRateSignal.getValueAsDouble();
+    return 0.0; // No work
   }
 
   /** The gyro's yaw as a Rotation2d, from the signal refreshed at the top of periodic(). */
   private Rotation2d getGyroRotation() {
-    return Rotation2d.fromDegrees(yawSignal.getValueAsDouble());
+    return new Rotation2d(); // no work
   }
 
   /**
@@ -292,7 +292,7 @@ public class CANDriveSubsystem extends SubsystemBase {
   @Override
   public void periodic() {
     // Pull the newest gyro data into our cached signals (see the field comment above).
-    BaseStatusSignal.refreshAll(yawSignal, yawRateSignal);
+    //BaseStatusSignal.refreshAll(yawSignal, yawRateSignal);
 
     // Fuse the latest sensor readings into the pose estimate.
     odometry.update(
@@ -309,7 +309,7 @@ public class CANDriveSubsystem extends SubsystemBase {
     Logger.recordOutput("Drive/RightPositionMeters", rightEncoder.getPosition());
     Logger.recordOutput("Drive/LeftVelocityMetersPerSec", leftEncoder.getVelocity());
     Logger.recordOutput("Drive/RightVelocityMetersPerSec", rightEncoder.getVelocity());
-    Logger.recordOutput("Drive/GyroYawDegrees", yawSignal.getValueAsDouble());
+    //Logger.recordOutput("Drive/GyroYawDegrees", yawSignal.getValueAsDouble());
     // What the controllers are actually outputting (-1 to 1). If the robot "won't drive",
     // this tells you whether the code even asked it to.
     Logger.recordOutput("Drive/AppliedOutputLeft", leftLeader.getAppliedOutput());
@@ -349,8 +349,8 @@ public class CANDriveSubsystem extends SubsystemBase {
     rightLeaderSim.iterate(
         driveSim.getRightVelocityMetersPerSecond(), RobotController.getBatteryVoltage(), 0.02);
 
-    pigeonSim.setSupplyVoltage(RobotController.getBatteryVoltage());
-    pigeonSim.setRawYaw(driveSim.getHeading().getDegrees());
+    //pigeonSim.setSupplyVoltage(RobotController.getBatteryVoltage()); // No have
+    //pigeonSim.setRawYaw(driveSim.getHeading().getDegrees()); // No have
 
     // 4) Simulate battery sag: driving hard pulls the simulated battery voltage down, just
     //    like a real match. (Watch "BatteryVoltage" dip in AdvantageScope while you drive.)
