@@ -52,6 +52,23 @@ public class RobotContainer {
     // add additional auto modes you can add additional lines here with
     // autoChooser.addOption
     autoChooser.setDefaultOption("Autonomous", new ExampleAuto(driveSubsystem, fuelSubsystem));
+    autoChooser.addOption("Velocity PID Test", velocityPidTest());
+  }
+
+  /**
+   * Tuning/sim aid: steps the drivetrain through a few real speeds (m/s) using the velocity PID,
+   * then stops. Select it as the auto, enable, and compare Drive/Left(Right)TargetMetersPerSec
+   * against Drive/Left(Right)VelocityMetersPerSec in AdvantageScope.
+   */
+  private Command velocityPidTest() {
+    return driveSubsystem
+        .run(() -> driveSubsystem.driveClosedLoop(1.0, 1.0))
+        .withTimeout(2.0)
+        .andThen(driveSubsystem.run(() -> driveSubsystem.driveClosedLoop(2.0, 2.0)).withTimeout(2.0))
+        .andThen(driveSubsystem.run(() -> driveSubsystem.driveClosedLoop(-1.0, -1.0)).withTimeout(2.0))
+        .andThen(driveSubsystem.run(() -> driveSubsystem.driveClosedLoop(0.5, 1.5)).withTimeout(2.0))
+        .finallyDo(driveSubsystem::stop)
+        .withName("Velocity PID Test");
   }
 
   /** A DEFAULT command runs automatically whenever nothing else is using that subsystem. */

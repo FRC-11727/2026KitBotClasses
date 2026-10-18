@@ -10,10 +10,16 @@ import com.revrobotics.PersistMode;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.ResetMode;
 import com.revrobotics.sim.SparkMaxSim;
+import com.revrobotics.spark.ClosedLoopSlot;
+import com.revrobotics.spark.FeedbackSensor;
+import com.revrobotics.spark.SparkBase.ControlType;
+import com.revrobotics.spark.SparkClosedLoopController;
+import com.revrobotics.spark.SparkClosedLoopController.ArbFFUnits;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
@@ -40,7 +46,6 @@ import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPLTVController;
 import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
 import edu.wpi.first.math.kinematics.DifferentialDriveWheelSpeeds;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
 
 /**
  * The drivetrain: four NEO motors (two per side) on a classic tank ("differential") drive.
@@ -83,6 +88,19 @@ public class CANDriveSubsystem extends SubsystemBase {
   // configured below, these report METERS and METERS/SECOND at the wheel, not motor turns.
   private final RelativeEncoder leftEncoder = leftLeader.getEncoder();
   private final RelativeEncoder rightEncoder = rightLeader.getEncoder();
+
+  // The SPARK MAX's built-in PID controllers. We hand them a speed target in m/s and the
+  // controller adjusts its output 1000 times a second to hit it (see driveClosedLoop).
+  private final SparkClosedLoopController leftController = leftLeader.getClosedLoopController();
+  private final SparkClosedLoopController rightController = rightLeader.getClosedLoopController();
+
+  // Live copies of the gains so they can be tuned from SmartDashboard without redeploying.
+  private double driveKp = DRIVE_KP;
+  private double driveKv = DRIVE_KV;
+
+  // The last speed targets (m/s) sent to the controllers, logged next to the real speeds.
+  private double leftTargetMps = 0.0;
+  private double rightTargetMps = 0.0;
 
   // The gyro. Knowing the robot's heading is what makes odometry accurate (encoders alone
   // can't tell the difference between driving straight and arcing).
@@ -133,6 +151,13 @@ public class CANDriveSubsystem extends SubsystemBase {
   private final SparkMaxSim rightLeaderSim = new SparkMaxSim(rightLeader, DCMotor.getNEO(2));
   //private final Pigeon2SimState pigeonSim = pigeon.getSimState(); // No have
 
+  // Without this the simulated SPARK MAXes ignore all commands (open-loop and PID alike).
+  // It makes them follow the Driver Station's enabled/disabled state, like real hardware.
+  {
+    leftLeaderSim.useDriverStationEnable();
+    rightLeaderSim.useDriverStationEnable();
+  }
+
   /** Configures all the hardware. Runs once when the robot code starts. */
   public CANDriveSubsystem() {
     // --- Configure the four SPARK MAXes ---------------------------------------------------
@@ -141,9 +166,11 @@ public class CANDriveSubsystem extends SubsystemBase {
     // another robot doesn't keep surprise settings) and kPersistParameters (settings survive
     // a power cycle).
     SparkMaxConfig leftConfig = baseConfig(LEFT_INVERTED);
+    addVelocityPid(leftConfig);
     leftLeader.configure(leftConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
     SparkMaxConfig rightConfig = baseConfig(RIGHT_INVERTED);
+    addVelocityPid(rightConfig);
     rightLeader.configure(
         rightConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
@@ -169,7 +196,58 @@ public class CANDriveSubsystem extends SubsystemBase {
     // Show the field widget on dashboards (Glass, Elastic, and the sim GUI all find it).
     SmartDashboard.putData("Field", field);
 
-    
+    // Gains for live tuning: change them on the dashboard and periodic() applies them.
+    SmartDashboard.putNumber("Drive/kP", driveKp);
+    SmartDashboard.putNumber("Drive/kV", driveKv);
+
+    configurePathPlanner();
+  }
+
+  /**
+   * Adds velocity PID to a leader's config. The encoder already reports m/s (conversion
+   * factors in baseConfig), so the gains work in wheel speed. The kV feedforward is added
+   * per-command in driveClosedLoop, not here.
+   */
+  private void addVelocityPid(SparkMaxConfig config) {
+    config
+        .closedLoop
+        .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
+        .p(driveKp)
+        .d(DRIVE_KD)
+        .outputRange(-1.0, 1.0);
+  }
+
+  /**
+   * Sets up PathPlanner's AutoBuilder. This must run once at startup on the real robot, not
+   * inside simulationPeriodic, which never runs on hardware.
+   */
+  private void configurePathPlanner() {
+    RobotConfig config;
+    try {
+      config = RobotConfig.fromGUISettings();
+    } catch (Exception e) {
+      // Usually means there is no PathPlanner settings file in deploy/. Drive code still works.
+      e.printStackTrace();
+      return;
+    }
+
+    AutoBuilder.configure(
+        this::getPose, // Robot pose supplier
+        this::resetOdometry, // Method to reset odometry (will be called if your auto has a starting pose)
+        this::getRobotRelativeSpeeds, // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
+        (speeds, feedforwards) -> driveRobotRelative(speeds), // Drives the robot given ROBOT RELATIVE ChassisSpeeds
+        new PPLTVController(0.02), // Built in path following controller for differential drive trains
+        config, // The robot configuration
+        () -> {
+          // Mirror the path for the red alliance. THE ORIGIN WILL REMAIN ON THE BLUE SIDE
+          var alliance = DriverStation.getAlliance();
+          if (alliance.isPresent()) {
+            return alliance.get() == DriverStation.Alliance.Red;
+          }
+          return false;
+        },
+        this // Reference to this subsystem to set requirements
+        );
   }
 
   /** The settings shared by all four motor controllers. */
@@ -241,6 +319,28 @@ public class CANDriveSubsystem extends SubsystemBase {
     return (leftEncoder.getPosition() + rightEncoder.getPosition()) / 2.0;
   }
 
+  /**
+   * Releases the motor controllers and drive object. The robot never calls this; tests do,
+   * because REVLib refuses a second SparkMax with the same CAN ID in one program.
+   */
+  public void close() {
+    drive.close();
+    leftLeader.close();
+    leftFollower.close();
+    rightLeader.close();
+    rightFollower.close();
+  }
+
+  /** Left side wheel speed in meters per second (forward positive). */
+  public double getLeftVelocityMps() {
+    return leftEncoder.getVelocity();
+  }
+
+  /** Right side wheel speed in meters per second (forward positive). */
+  public double getRightVelocityMps() {
+    return rightEncoder.getVelocity();
+  }
+
 // 2. Method implementation:
   public ChassisSpeeds getRobotRelativeSpeeds() {
     DifferentialDriveWheelSpeeds wheelSpeeds = new DifferentialDriveWheelSpeeds(
@@ -251,15 +351,41 @@ public class CANDriveSubsystem extends SubsystemBase {
   }
   
   public void driveRobotRelative(ChassisSpeeds speeds) {
-  // Call toWheelSpeeds on kinematics, NOT drive
+    // Convert (forward m/s, turn rad/s) into a speed for each side, then let the SPARK MAX
+    // PID hold those speeds.
     DifferentialDriveWheelSpeeds wheelSpeeds = m_kinematics.toWheelSpeeds(speeds);
+    driveClosedLoop(wheelSpeeds.leftMetersPerSecond, wheelSpeeds.rightMetersPerSecond);
+  }
 
-  // If you use feedforward/volts or closed-loop speed control, apply it here.
-  // For basic voltage/tank drive:
-    tankDrive(
-      wheelSpeeds.leftMetersPerSecond, 
-      wheelSpeeds.rightMetersPerSecond
-    );
+  /**
+   * Drive each side at a real speed using velocity PID on the SPARK MAX.
+   *
+   * <p>Output = kV * target (feedforward, the bulk of the power) + kP * (target - actual).
+   * Like drive.tankDrive, motor-safety needs this called every loop while driving.
+   *
+   * @param leftMps left side target speed in meters per second
+   * @param rightMps right side target speed in meters per second
+   */
+  public void driveClosedLoop(double leftMps, double rightMps) {
+    // Never ask for more than the drivetrain can do, or the feedforward saturates.
+    leftTargetMps = MathUtil.clamp(leftMps, -MAX_SPEED_MPS, MAX_SPEED_MPS);
+    rightTargetMps = MathUtil.clamp(rightMps, -MAX_SPEED_MPS, MAX_SPEED_MPS);
+
+    leftController.setSetpoint(
+        leftTargetMps,
+        ControlType.kVelocity,
+        ClosedLoopSlot.kSlot0,
+        driveKv * leftTargetMps,
+        ArbFFUnits.kVoltage);
+    rightController.setSetpoint(
+        rightTargetMps,
+        ControlType.kVelocity,
+        ClosedLoopSlot.kSlot0,
+        driveKv * rightTargetMps,
+        ArbFFUnits.kVoltage);
+
+    // Keep DifferentialDrive's motor-safety watchdog fed, since we bypass its drive methods.
+    drive.feed();
   }
 
   /** Turn rate in degrees per second (used by TurnToAngleCommand's tolerance check). */
@@ -301,6 +427,8 @@ public class CANDriveSubsystem extends SubsystemBase {
     // Update the dashboard field drawing.
     field.setRobotPose(getPose());
 
+    updateTunableGains();
+
     // --- Logging --------------------------------------------------------------------------
     // Everything recorded here (plus the @AutoLogOutput getters above) is sent to the
     // dashboard live AND saved into the .wpilog file. When something acts up at a
@@ -309,6 +437,9 @@ public class CANDriveSubsystem extends SubsystemBase {
     Logger.recordOutput("Drive/RightPositionMeters", rightEncoder.getPosition());
     Logger.recordOutput("Drive/LeftVelocityMetersPerSec", leftEncoder.getVelocity());
     Logger.recordOutput("Drive/RightVelocityMetersPerSec", rightEncoder.getVelocity());
+    // Target vs actual speed: the graph to watch while tuning kV and kP.
+    Logger.recordOutput("Drive/LeftTargetMetersPerSec", leftTargetMps);
+    Logger.recordOutput("Drive/RightTargetMetersPerSec", rightTargetMps);
     //Logger.recordOutput("Drive/GyroYawDegrees", yawSignal.getValueAsDouble());
     // What the controllers are actually outputting (-1 to 1). If the robot "won't drive",
     // this tells you whether the code even asked it to.
@@ -324,6 +455,21 @@ public class CANDriveSubsystem extends SubsystemBase {
           rightLeader.getOutputCurrent(),
           rightFollower.getOutputCurrent()
         });
+  }
+
+  /** Re-applies kP/kV when they change on the dashboard (only touches RAM, not flash). */
+  private void updateTunableGains() {
+    double newKp = SmartDashboard.getNumber("Drive/kP", driveKp);
+    double newKv = SmartDashboard.getNumber("Drive/kV", driveKv);
+    driveKv = newKv;
+
+    if (newKp != driveKp) {
+      driveKp = newKp;
+      SparkMaxConfig gains = new SparkMaxConfig();
+      gains.closedLoop.p(driveKp);
+      leftLeader.configure(gains, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+      rightLeader.configure(gains, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+    }
   }
 
   // ----------------------------------------------------------------------------------------
@@ -360,33 +506,5 @@ public class CANDriveSubsystem extends SubsystemBase {
     // Also log the "true" simulated pose. Comparing it against Drive/Pose shows you how
     // much odometry drifts, which is a great thing for students to explore.
     Logger.recordOutput("Drive/SimTruePose", driveSim.getPose());
-
-    RobotConfig config;
-    try{
-      config = RobotConfig.fromGUISettings();
-    
-      AutoBuilder.configure(
-        this::getPose, // Robot pose supplier
-        this::resetOdometry, // Method to reset odometry (will be called if your auto has a starting pose)
-        this::getRobotRelativeSpeeds, // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
-        (speeds, feedforwards) -> driveRobotRelative(speeds), // Method that will drive the robot given ROBOT RELATIVE ChassisSpeeds. Also optionally outputs individual module feedforwards
-        new PPLTVController(0.02), // PPLTVController is the built in path following controller for differential drive trains
-        config, // The robot configuration
-        () -> {
-          // Boolean supplier that controls when the path will be mirrored for the red alliance
-          // This will flip the path being followed to the red side of the field.
-          // THE ORIGIN WILL REMAIN ON THE BLUE SIDE
-          var alliance = DriverStation.getAlliance();
-          if (alliance.isPresent()) {
-            return alliance.get() == DriverStation.Alliance.Red;
-          }
-          return false;
-        },
-        this // Reference to this subsystem to set requirements
-      );
-    } catch (Exception e) {
-      // Handle exception as needed
-      e.printStackTrace();
-    }
   }
 }

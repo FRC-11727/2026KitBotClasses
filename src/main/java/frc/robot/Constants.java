@@ -122,6 +122,26 @@ public final class Constants {
     /** Moment of inertia - how hard the robot is to SPIN. 7.5 is a reasonable default. */
     public static final double ROBOT_MOI_KG_M2 = 7.5; //change
 
+    // ------------------------------------------------------------------------------------
+    // Drivetrain velocity PID (runs on the SPARK MAX). Used when the robot is told to drive
+    // at a real speed in m/s (PathPlanner autos); teleop stays open-loop.
+    //
+    // Output = kV * targetSpeed (feedforward, does most of the work) + kP * error (fixes
+    // what's left). Tune kV first, then kP; leave kD at 0 unless it overshoots.
+    // ------------------------------------------------------------------------------------
+
+    /** Top speed of the drivetrain in m/s. Theoretical for now; measure on the real robot. */
+    public static final double MAX_SPEED_MPS = 4.0; // Change
+
+    /** Feedforward: volts per m/s. Starts at 12V / top speed, then tune on the robot. */
+    public static final double DRIVE_KV = NOMINAL_VOLTAGE / MAX_SPEED_MPS; // Change
+
+    /** Proportional gain on wheel speed error. Raise until it tracks without oscillating. */
+    public static final double DRIVE_KP = 0.1; // Change
+
+    /** Derivative gain. Leave at 0 unless the robot overshoots its target speed. */
+    public static final double DRIVE_KD = 0.0; // Change
+
     public static final Pose2d START_POSE = new Pose2d(2.0, 2.0, Rotation2d.kZero);
   }
 
