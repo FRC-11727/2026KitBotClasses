@@ -66,17 +66,17 @@ public final class Constants {
      * "fast" option). Getting this wrong makes every distance the robot reports wrong by the
      * same factor.
      */
-    public static final double GEAR_RATIO = 10.71; //change
+    public static final double GEAR_RATIO = 10.71; 
 
     /** KitBot wheels are 6 inches. Measure yours, since worn wheels are slightly smaller. */
-    public static final double WHEEL_DIAMETER_METERS = Units.inchesToMeters(6.0); //change
+    public static final double WHEEL_DIAMETER_METERS = Units.inchesToMeters(6.0);
 
     /**
      * Distance between the CENTERS of the left and right wheels ("track width"). Used by the
      * simulator and, later, by trajectory following. Measure with a tape measure; close is
      * fine to start.
      */
-    public static final double TRACK_WIDTH_METERS = Units.inchesToMeters(22.0); //change
+    public static final double TRACK_WIDTH_METERS = Units.inchesToMeters(22.0);
 
     // ------------------------------------------------------------------------------------
     // Encoder conversion factors.
