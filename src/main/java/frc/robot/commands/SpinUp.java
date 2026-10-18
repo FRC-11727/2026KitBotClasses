@@ -9,10 +9,12 @@ import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.CANFuelSubsystem;
 import static frc.robot.Constants.FuelConstants.*;
 
-/* You should consider using the more terse Command factories API instead https://docs.wpilib.org/en/stable/docs/software/commandbased/organizing-command-based.html#defining-commands */
+/**
+ * Spins the launcher up to its target RPM (velocity PID) while the feeder backs fuel away from
+ * the wheel. Finishes once the launcher is up to speed, but leaves the rollers running so a
+ * following {@link Launch} starts already spinning.
+ */
 public class SpinUp extends Command {
-  /** Creates a new Intake. */
-
   CANFuelSubsystem fuelSubsystem;
 
   public SpinUp(CANFuelSubsystem fuelSystem) {
@@ -20,30 +22,24 @@ public class SpinUp extends Command {
     this.fuelSubsystem = fuelSystem;
   }
 
-  // Called when the command is initially scheduled. Set the rollers to the
-  // appropriate values for intaking
+  // Called when the command is initially scheduled.
   @Override
   public void initialize() {
-    fuelSubsystem
-        .setIntakeLauncherRoller(
-            SmartDashboard.getNumber("Launching launcher roller value", LAUNCHING_LAUNCHER_VOLTAGE));
-    fuelSubsystem.setFeederRoller(SmartDashboard.getNumber("Launching spin-up feeder value", SPIN_UP_FEEDER_VOLTAGE));
+    fuelSubsystem.spinUpLauncher();
+    fuelSubsystem.setFeederRoller(
+        SmartDashboard.getNumber("Spin-up feeder roller value", SPIN_UP_FEEDER_VOLTAGE));
   }
 
-  // Called every time the scheduler runs while the command is scheduled. This
-  // command doesn't require updating any values while running
-  @Override
-  public void execute() {
-  }
-
-  // Called once the command ends or is interrupted. Stop the rollers
+  // Called once the command ends or is interrupted. The rollers are intentionally left
+  // running so Launch can take over without a gap; the fuel subsystem's default command
+  // stops them if nothing else does.
   @Override
   public void end(boolean interrupted) {
   }
 
-  // Returns true when the command should end.
+  // Done once the launcher has reached its target speed.
   @Override
   public boolean isFinished() {
-    return false;
+    return fuelSubsystem.atSpeed();
   }
 }

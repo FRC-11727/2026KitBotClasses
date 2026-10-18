@@ -160,9 +160,40 @@ public final class Constants {
     public static final double INTAKING_FEEDER_VOLTAGE = -12;
     public static final double INTAKING_INTAKE_VOLTAGE = 10;
     public static final double LAUNCHING_FEEDER_VOLTAGE = 9;
-    public static final double LAUNCHING_LAUNCHER_VOLTAGE = 10.6;
     public static final double SPIN_UP_FEEDER_VOLTAGE = -6;
-    public static final double SPIN_UP_SECONDS = 1;
+
+    // ------------------------------------------------------------------------------------
+    // Launcher velocity PID (runs on the SPARK MAX; units are motor RPM). Replaces the old
+    // fixed launching voltage so every shot leaves at the same speed regardless of battery
+    // or load. Output = kV * target (feedforward) + kP * error. Tune kV first, then kP.
+    // ------------------------------------------------------------------------------------
+
+    /** NEO free speed at 12V, used to derive kV. */
+    public static final double NEO_FREE_SPEED_RPM = 5676.0;
+
+    /** Launcher speed for a shot. ~5000 matches the old 10.6V; set from real robot logs. */
+    public static final double LAUNCHER_TARGET_RPM = 5000.0; // Change
+
+    /** Feedforward: volts per RPM. Starts at 12V / free speed, then tune on the robot. */
+    public static final double LAUNCHER_KV = 12.0 / NEO_FREE_SPEED_RPM; // Change
+
+    /** Proportional gain on RPM error (tiny because the error is in RPM). */
+    public static final double LAUNCHER_KP = 0.0001; // Change
+
+    /** Derivative gain. Leave at 0 unless the wheel overshoots. */
+    public static final double LAUNCHER_KD = 0.0; // Change
+
+    /** The launcher counts as "up to speed" when within this many RPM of its target. */
+    public static final double LAUNCHER_READY_TOLERANCE_RPM = 100.0; // Change
+
+    /**
+     * Longest we wait for the launcher to reach speed before feeding anyway. Stops a broken
+     * encoder from silently disabling the shooter.
+     */
+    public static final double SPIN_UP_TIMEOUT_SECONDS = 2.5;
+
+    // Simulation only: how hard the launcher wheel is to spin (kg*m^2). Rough guess.
+    public static final double LAUNCHER_SIM_MOI_KG_M2 = 0.002; // Change
   }
 
   public static final class OperatorConstants {
