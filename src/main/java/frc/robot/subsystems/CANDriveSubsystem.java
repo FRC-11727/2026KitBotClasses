@@ -93,6 +93,7 @@ public class CANDriveSubsystem extends SubsystemBase {
   // pattern CTRE recommends, and it guarantees the rest of the loop sees current data.
   //private final StatusSignal<Angle> yawSignal = pigeon.getYaw(); // No have
   //private final StatusSignal<AngularVelocity> yawRateSignal = pigeon.getAngularVelocityZWorld(); // No have
+  
 
   // WPILib helper that turns (forward, rotation) or (left, right) requests into correctly
   // scaled outputs for the two sides. It also includes a motor-safety watchdog: if no drive
@@ -112,7 +113,7 @@ public class CANDriveSubsystem extends SubsystemBase {
 
   // A widget that draws the robot on a top-down field view in Glass / Elastic / the sim GUI.
   private final Field2d field = new Field2d();
-
+  private Rotation2d simHeading = new Rotation2d();
   // ----------------------------------------------------------------------------------------
   // Simulation objects. These are only *used* when running on your laptop (see
   // simulationPeriodic below); on the real robot they simply sit idle. The physics sim
@@ -281,7 +282,7 @@ public class CANDriveSubsystem extends SubsystemBase {
     // The odometry class stores the current encoder/gyro readings as offsets, so we don't
     // need to zero the physical sensors.
     odometry.resetPosition(
-        getGyroRotation(), leftEncoder.getPosition(), rightEncoder.getPosition(), pose);
+        simHeading, leftEncoder.getPosition(), rightEncoder.getPosition(), pose);
   }
 
   // ----------------------------------------------------------------------------------------
@@ -296,7 +297,7 @@ public class CANDriveSubsystem extends SubsystemBase {
 
     // Fuse the latest sensor readings into the pose estimate.
     odometry.update(
-        getGyroRotation(), leftEncoder.getPosition(), rightEncoder.getPosition());
+        simHeading, leftEncoder.getPosition(), rightEncoder.getPosition());
 
     // Update the dashboard field drawing.
     field.setRobotPose(getPose());
@@ -329,7 +330,7 @@ public class CANDriveSubsystem extends SubsystemBase {
   // ----------------------------------------------------------------------------------------
   // simulationPeriodic() - like periodic(), but ONLY runs in simulation, right after it.
   // The pattern: feed the motor outputs into a physics model, then write the physics
-  // results back into the simulated sensors. The rest of the code can't tell the difference.
+  // results back into the simulated sensors. The rest of the code't tell the difference.
   // ----------------------------------------------------------------------------------------
   @Override
   public void simulationPeriodic() {
@@ -340,6 +341,10 @@ public class CANDriveSubsystem extends SubsystemBase {
 
     // 2) Advance the physics by one 20ms step.
     driveSim.update(0.02);
+
+    // Inside your simulationPeriodic() method
+    
+    simHeading = driveSim.getHeading();
 
     // 3) Copy the physics results back into the "sensors". iterate() updates the simulated
     //    encoder position/velocity from the mechanism velocity we hand it (m/s, matching our
