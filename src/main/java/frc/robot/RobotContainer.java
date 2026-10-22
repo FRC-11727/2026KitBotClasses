@@ -11,11 +11,13 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import static frc.robot.Constants.OperatorConstants.*;
+import frc.robot.Constants.ShotConstants.ShotSpot;
 import frc.robot.commands.Drive;
 import frc.robot.commands.Eject;
 import frc.robot.commands.ExampleAuto;
 import frc.robot.commands.Intake;
 import frc.robot.commands.LaunchSequence;
+import frc.robot.commands.ShootFromSpot;
 import frc.robot.subsystems.CANDriveSubsystem;
 import frc.robot.subsystems.CANFuelSubsystem;
 import frc.robot.commands.AutoAlign;
@@ -100,6 +102,12 @@ public class RobotContainer {
     // While the A button is held on the operator controller, eject fuel back out
     // the intake
     operatorController.a().whileTrue(new Eject(fuelSubsystem));
+    // Preset shots, no camera needed. Once the driver is parked on a spot and pointed at
+    // the hub, hold that spot's button: it spins up, waits for the robot to stop moving,
+    // then fires until released. Spots and voltages live in ShotConstants.
+    operatorController.y().whileTrue(new ShootFromSpot(fuelSubsystem, driveSubsystem, ShotSpot.HUB));
+    operatorController.x().whileTrue(new ShootFromSpot(fuelSubsystem, driveSubsystem, ShotSpot.TOWER));
+    operatorController.b().whileTrue(new ShootFromSpot(fuelSubsystem, driveSubsystem, ShotSpot.TRENCH));
     // While the right bumper on the driver controller is held, align the robot
     driverController.rightTrigger().whileTrue(new AutoAlign(driveSubsystem));
     // Set the default command for the drive subsystem to the command provided by

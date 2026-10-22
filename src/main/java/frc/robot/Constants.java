@@ -145,6 +145,44 @@ public final class Constants {
     public static final double SPIN_UP_SECONDS = 1;
   }
 
+  public static final class ShotConstants {
+    // ------------------------------------------------------------------------------------
+    // Preset shooting spots (no camera needed)
+    //
+    // Without vision the robot can't tell how far away the hub is. Instead, the drive team
+    // picks a few spots that are easy to find the same way every time (bumpers touching
+    // something is best), and we tune one launcher voltage per spot. The driver drives to
+    // the spot and points the robot at the hub; holding that spot's button spins up and
+    // fires (see ShootFromSpot).
+    //
+    // These spots and voltages are EXAMPLES. Rename, add, or remove spots to match where
+    // your drive team actually shoots from, then tune each voltage on the real robot. Each
+    // one also shows up on the dashboard as "<Label> shot launcher voltage" so you can tune
+    // it live, then copy the value back here.
+    // ------------------------------------------------------------------------------------
+    public enum ShotSpot {
+      HUB("Hub", 6.0), // bumpers touching the hub
+      TOWER("Tower", 9.0), // bumpers against our tower
+      TRENCH("Trench", 10.5); // just out of the trench
+
+      public final String label;
+      public final double launcherVoltage;
+      public final String dashboardKey;
+
+      ShotSpot(String label, double launcherVoltage) {
+        this.label = label;
+        this.launcherVoltage = launcherVoltage;
+        this.dashboardKey = label + " shot launcher voltage";
+      }
+    }
+
+    // A shot only goes in if the robot is sitting still when it fires. Feeding waits until
+    // the robot is moving slower than BOTH of these, and has been for SETTLE_SECONDS.
+    public static final double MAX_SHOOTING_SPEED_METERS_PER_SEC = 0.1;
+    public static final double MAX_SHOOTING_TURN_RATE_DEG_PER_SEC = 10.0;
+    public static final double SETTLE_SECONDS = 0.2;
+  }
+
   public static final class OperatorConstants {
     // Port constants for driver and operator controllers. These should match the
     // values in the Joystick tab of the Driver Station software

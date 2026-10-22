@@ -12,6 +12,7 @@ import com.revrobotics.spark.SparkMax;
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.ShotConstants.ShotSpot;
 import static frc.robot.Constants.FuelConstants.*;
 
 public class CANFuelSubsystem extends SubsystemBase {
@@ -47,6 +48,10 @@ public class CANFuelSubsystem extends SubsystemBase {
     SmartDashboard.putNumber("Launching feeder roller value", LAUNCHING_FEEDER_VOLTAGE);
     SmartDashboard.putNumber("Launching launcher roller value", LAUNCHING_LAUNCHER_VOLTAGE);
     SmartDashboard.putNumber("Spin-up feeder roller value", SPIN_UP_FEEDER_VOLTAGE);
+    // one launcher voltage per preset shooting spot (see ShotConstants)
+    for (ShotSpot spot : ShotSpot.values()) {
+      SmartDashboard.putNumber(spot.dashboardKey, spot.launcherVoltage);
+    }
   }
 
   // A method to set the voltage of the intake roller
