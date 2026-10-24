@@ -138,9 +138,9 @@ public final class Constants {
     // based on exact robot construction.
     // See the Software Guide for tuning information
     public static final double INTAKING_FEEDER_VOLTAGE = 10; // 10V shot 40-45 cm away
-    public static final double INTAKING_INTAKE_VOLTAGE = -7; //last was 7
+    public static final double INTAKING_INTAKE_VOLTAGE = -6; //last was 7
     public static final double LAUNCHING_FEEDER_VOLTAGE = -10;
-    public static final double LAUNCHING_LAUNCHER_VOLTAGE = -9; //last was 10 // 8V is less than 220 cm
+    public static final double LAUNCHING_LAUNCHER_VOLTAGE = -8.5; //last was 10 // 8V is less than 220 cm
     public static final double SPIN_UP_FEEDER_VOLTAGE = -6;
     public static final double SPIN_UP_SECONDS = 1;
   }
