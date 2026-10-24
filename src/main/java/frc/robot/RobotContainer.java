@@ -6,20 +6,25 @@ package frc.robot;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import static frc.robot.Constants.OperatorConstants.*;
-import frc.robot.commands.Drive;
-import frc.robot.commands.Eject;
-import frc.robot.commands.ExampleAuto;
-import frc.robot.commands.Intake;
-import frc.robot.commands.LaunchSequence;
 import frc.robot.subsystems.CANDriveSubsystem;
 import frc.robot.subsystems.CANFuelSubsystem;
-import frc.robot.commands.AutoAlign;
+import frc.robot.commands.Autos;
+import frc.robot.commands.ShootAllCommand;
+import frc.robot.commands.AutoDrive;
+import frc.robot.commands.Drive;
+import frc.robot.commands.Eject;
+import frc.robot.commands.Intake;
+import frc.robot.commands.Launch;
+import frc.robot.commands.LaunchSequence;
+import frc.robot.commands.SpinUp;
 import frc.robot.commands.TeleopDriveCommand;
+import frc.robot.commands.ExampleAuto;
 
 /**
  * This class is where the bulk of the robot should be declared. Since
@@ -49,6 +54,7 @@ public class RobotContainer {
   public RobotContainer() {
     configureBindings();
     configureDefaultCommands();
+    configureAutos();
 
     // Set the options to show up in the Dashboard for selecting auto modes. If you
     // add additional auto modes you can add additional lines here with
@@ -101,7 +107,7 @@ public class RobotContainer {
     // the intake
     operatorController.a().whileTrue(new Eject(fuelSubsystem));
     // While the right bumper on the driver controller is held, align the robot
-    driverController.rightTrigger().whileTrue(new AutoAlign(driveSubsystem));
+    // driverController.rightTrigger().whileTrue(new AutoAlign(driveSubsystem));
     // Set the default command for the drive subsystem to the command provided by
     // factory with the values provided by the joystick axes on the driver
     // controller. The Y axis of the controller is inverted so that pushing the
@@ -110,6 +116,14 @@ public class RobotContainer {
     driveSubsystem.setDefaultCommand(new Drive(driveSubsystem, driverController));
 
     fuelSubsystem.setDefaultCommand(fuelSubsystem.run(() -> fuelSubsystem.stop()));
+  }
+
+  private void configureAutos() {
+    autoChooser.setDefaultOption("Do Nothing", Autos.doNothing());
+    // Add autonomous options to the chooser
+    autoChooser.addOption("Shoot and Leave", new ShootAllCommand(fuelSubsystem));
+    // Add more autonomous options as needed
+    SmartDashboard.putData("Auto Choices", autoChooser);
   }
 
   /**
