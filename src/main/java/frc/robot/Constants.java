@@ -137,10 +137,10 @@ public final class Constants {
     // Voltage values for various fuel operations. These values may need to be tuned
     // based on exact robot construction.
     // See the Software Guide for tuning information
-    public static final double INTAKING_FEEDER_VOLTAGE = -6;
-    public static final double INTAKING_INTAKE_VOLTAGE = 6;
-    public static final double LAUNCHING_FEEDER_VOLTAGE = 6;
-    public static final double LAUNCHING_LAUNCHER_VOLTAGE = 6;
+    public static final double INTAKING_FEEDER_VOLTAGE = 10; // 10V shot 40-45 cm away
+    public static final double INTAKING_INTAKE_VOLTAGE = -7; //last was 7
+    public static final double LAUNCHING_FEEDER_VOLTAGE = -10;
+    public static final double LAUNCHING_LAUNCHER_VOLTAGE = -9; //last was 10 // 8V is less than 220 cm
     public static final double SPIN_UP_FEEDER_VOLTAGE = -6;
     public static final double SPIN_UP_SECONDS = 1;
   }
@@ -172,7 +172,7 @@ public final class Constants {
     public static final double FORWARD_SLEW_RATE = 3.0;
 
     /** Everything is multiplied by this while the slow-mode button is held. */
-    public static final double SLOW_MODE_MULTIPLIER = 0.5;
+    public static final double SLOW_MODE_MULTIPLIER = 0.3; //was 0.5
 
     //Normal speed multiplier for teleop drive command is 70% of  full speed.
     public static final double NORMAL_SPEED_MULTIPLIER = 0.7;
